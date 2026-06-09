@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen Experto: Sistemas Distribuidos RMI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ide: { bg: '#1e1e1e', panel: '#252526', border: '#3c3c3c', highlight: '#04395e' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(-10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/vs2015.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/java.min.js"></script>
+    
+    <style>
+        /* Custom scrollbars to match IDE look */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #424242; border-radius: 5px; border: 2px solid #1e1e1e; }
+        ::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
+        
+        /* Option buttons transitions */
+        .option-btn { transition: all 0.2s ease; }
+        .option-btn:disabled { cursor: default; }
+    </style>
+</head>
+<body class="bg-ide-bg text-gray-300 font-sans min-h-screen flex flex-col selection:bg-blue-900 selection:text-white">
+
+    <header class="bg-ide-panel border-b border-ide-border py-4 px-6 shadow-md z-10 sticky top-0">
+        <div class="max-w-screen-2xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-semibold text-gray-100 flex items-center gap-2">
+                <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                Simulador RMI Avanzado
+            </h1>
+            <div class="text-sm px-3 py-1 bg-blue-900/50 text-blue-300 rounded border border-blue-800">
+                Modo Experto
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full max-w-screen-2xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        
+        <section class="bg-ide-panel border border-ide-border rounded-lg shadow-lg overflow-hidden flex flex-col h-[85vh] sticky top-20">
+            <div class="bg-[#2d2d2d] px-4 py-2 border-b border-ide-border flex items-center text-xs text-gray-400 font-mono tracking-wider">
+                EXPLORADOR DE ARCHIVOS (LECTURA)
+            </div>
+            <div class="overflow-y-auto p-4 space-y-8 font-mono text-[13px] leading-relaxed">
+                
+                <div>
+                    <h3 class="text-green-400 mb-2 border-b border-gray-700 pb-1">Listing 1: Interfaces Remotas del Sistema</h3>
+<pre><code class="language-java rounded bg-[#1e1e1e] border border-[#333]">1  package rmi.expert.interfaces;
+2  import java.rmi.Remote;
+3  import java.rmi.RemoteException;
+4  import java.io.IOException;
+5
+6  // 1. Interfaz del Callback (Observer en el Cliente)
+7  public interface LogVista ~~~~~(1)~~~~~ {
+8      void notify(String msg) throws ~~~~~(2)~~~~~;
+9  }
+10 
+11 // 2. Interfaz del recurso creado dinámicamente (Patrón Factory)
+12 public interface FileLector extends Remote {
+13     String leeLinea() throws RemoteException, IOException;
+14 }
+15 
+16 // 3. Interfaz Base de Gestión (Para usuarios comunes)
+17 public interface FileGestor extends Remote {
+18     FileLector abre(String nombre) throws RemoteException;
+19 }
+20 
+21 // 4. Interfaz Superior de Gestión (Para administradores)
+22 public interface FileGestorAdmin extends Remote, FileGestor {
+23     void registrarLog(LogVista vista) throws RemoteException;
+24 }</code></pre>
+                </div>
+
+                <div>
+                    <h3 class="text-green-400 mb-2 border-b border-gray-700 pb-1">Listing 2: Implementaciones en el Servidor</h3>
+<pre><code class="language-java rounded bg-[#1e1e1e] border border-[#333]">1  package rmi.expert.server;
+2  import rmi.expert.interfaces.*;
+3  import java.rmi.server.UnicastRemoteObject;
+4  import java.rmi.server.RemoteServer;
+5  import java.rmi.RemoteException;
+6  import javax.rmi.ssl.SslRMIClientSocketFactory;
+7  import javax.rmi.ssl.SslRMIServerSocketFactory;
+8  
+9  public class FileLectorImpl extends ~~~~~(3)~~~~~ implements FileLector {
+10     public FileLectorImpl() throws RemoteException { super(); }
+11     public String leeLinea() throws RemoteException { return "Línea de datos clasificados"; }
+12 }
+13 
+14 public class FileGestorAdminImpl extends UnicastRemoteObject implements FileGestorAdmin {
+15     private LogVista observador;
+16     
+17     public FileGestorAdminImpl(SslRMIClientSocketFactory csf, SslRMIServerSocketFactory ssf) throws RemoteException {
+18         ~~~~~(4)~~~~~; 
+19     }
+20     
+21     public FileLector abre(String nombre) throws RemoteException {
+22         if (observador != null) observador.notify("Se ha abierto: " + nombre);
+23         return new ~~~~~(5)~~~~~(); 
+24     }
+25     
+26     public void registrarLog(LogVista vista) throws RemoteException {
+27         this.observador = vista;
+28     }
+29 }
+30 
+31 public class FileGestorImpl extends UnicastRemoteObject implements FileGestor {
+32     private FileGestorAdmin delegado; 
+33     
+34     public FileGestorImpl(FileGestorAdmin delegado) throws RemoteException {
+35         super();
+36         this.delegado = delegado;
+37     }
+38     
+39     public FileLector abre(String nombre) throws RemoteException {
+40         try {
+41             System.out.println("Petición desde IP: " + ~~~~~(6)~~~~~()); 
+42         } catch (Exception e) {}
+43         return delegado.abre(nombre);
+44     }
+45 }</code></pre>
+                </div>
+
+                <div>
+                    <h3 class="text-green-400 mb-2 border-b border-gray-700 pb-1">Listing 3: Lanzador del Servidor</h3>
+<pre><code class="language-java rounded bg-[#1e1e1e] border border-[#333]">1  package rmi.expert.server;
+2  import rmi.expert.interfaces.*;
+3  import java.rmi.registry.LocateRegistry;
+4  import java.rmi.registry.Registry;
+5  import javax.rmi.ssl.SslRMIClientSocketFactory;
+6  import javax.rmi.ssl.SslRMIServerSocketFactory;
+7
+8  public class LanzadorServidor {
+9      public static void main(String[] args) {
+10         try {
+11             System.setProperty("javax.net.ssl.keyStore", "Server_Keystore.jks");
+12             System.setProperty("javax.net.ssl.keyStorePassword", "servidorpass");
+13             System.setProperty("java.rmi.server.logCalls", "~~~~~(9)~~~~~");
+14
+15             SslRMIClientSocketFactory csf = new SslRMIClientSocketFactory();
+16             SslRMIServerSocketFactory ssf = new SslRMIServerSocketFactory();
+17
+18             Registry reg = LocateRegistry.~~~~~(7)~~~~~(1099, csf, ssf);
+19
+20             FileGestorAdminImpl objAdmin = new FileGestorAdminImpl(csf, ssf);
+21             FileGestorImpl objUsuario = new FileGestorImpl(objAdmin);
+22
+23             reg.~~~~~(8)~~~~~("ServicioUsuario", objUsuario);
+24             reg.rebind("ServicioAdmin", objAdmin);
+25
+26             System.out.println("Servidor iniciado.");
+27         } catch (Exception e) { e.printStackTrace(); }
+28     }
+29 }</code></pre>
+                </div>
+
+                <div>
+                    <h3 class="text-green-400 mb-2 border-b border-gray-700 pb-1">Listing 4: Cliente Administrador con Callback</h3>
+<pre><code class="language-java rounded bg-[#1e1e1e] border border-[#333]">1  package rmi.expert.client;
+2  import rmi.expert.interfaces.*;
+3  import java.rmi.server.UnicastRemoteObject;
+4  import java.rmi.registry.LocateRegistry;
+5  import java.rmi.registry.Registry;
+6  import javax.rmi.ssl.SslRMIClientSocketFactory;
+7  import javax.rmi.ssl.SslRMIServerSocketFactory;
+8  import java.rmi.RemoteException;
+9
+10 public class ClienteAdmin {
+11     public static void main(String[] args) {
+12         try {
+13             System.setProperty("javax.net.ssl.trustStore", "Client_Truststore.jks");
+14             System.setProperty("javax.net.ssl.trustStorePassword", "clientepass");
+15             
+16             System.setProperty("javax.net.ssl.keyStore", "Server_Keystore.jks");
+17             System.setProperty("javax.net.ssl.keyStorePassword", "servidorpass");
+18
+19             SslRMIClientSocketFactory csf = new SslRMIClientSocketFactory();
+20             SslRMIServerSocketFactory ssf = new SslRMIServerSocketFactory(~~~~~(10)~~~~~);
+21
+22             Registry reg = LocateRegistry.getRegistry("localhost", 1099, csf);
+23
+24             ~~~~~(11)~~~~~ gestor = (FileGestorAdmin) reg.lookup("ServicioAdmin");
+25
+26             LogVistaImpl miVista = new LogVistaImpl(csf, ssf);
+27             gestor.registrarLog(miVista);
+28
+29             FileLector lector = gestor.abre("nomina.pdf");
+30             System.out.println("Recibido: " + lector.leeLinea());
+31
+32         } catch (Exception e) { e.printStackTrace(); }
+33     }
+34 }
+35
+36 class LogVistaImpl extends UnicastRemoteObject implements LogVista {
+37     public LogVistaImpl(SslRMIClientSocketFactory csf, SslRMIServerSocketFactory ssf) throws RemoteException {
+38         super(0, csf, ssf);
+39     }
+40     public void notify(String msg) { System.out.println("ALERTA REMOTA: " + msg); }
+41 }</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="quiz-container" class="bg-ide-panel border border-ide-border rounded-lg shadow-lg flex flex-col min-h-[500px]">
+            
+            <div class="px-6 py-4 border-b border-ide-border flex justify-between items-center bg-[#252526]">
+                <span id="question-tracker" class="text-sm font-semibold text-gray-400">Pregunta 1 de 15</span>
+                <span id="live-score" class="text-sm font-bold text-blue-400">Aciertos: 0</span>
+            </div>
+            <div class="w-full bg-gray-800 h-1">
+                <div id="progress-bar" class="bg-blue-500 h-1 transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <div class="p-6 flex-grow flex flex-col">
+                <h2 id="question-text" class="text-lg font-medium text-gray-100 mb-6 leading-relaxed">Cargando pregunta...</h2>
+                
+                <div id="options-grid" class="flex flex-col gap-3 mb-6">
+                    </div>
+
+                <div id="explanation-box" class="hidden mt-4 p-4 rounded bg-[#1e293b] border-l-4 border-blue-500 shadow-inner">
+                    <h4 class="text-sm font-bold text-gray-100 mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                        Explicación
+                    </h4>
+                    <p id="explanation-text" class="text-sm text-gray-300 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-ide-border bg-[#2d2d2d] flex justify-end">
+                <button id="btn-next" class="hidden bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-medium transition-colors">
+                    Siguiente Pregunta
+                </button>
+            </div>
+        </section>
+
+        <section id="results-container" class="hidden bg-ide-panel border border-ide-border rounded-lg shadow-lg p-10 flex flex-col items-center justify-center min-h-[500px] text-center">
+            <h2 class="text-3xl font-bold text-gray-100 mb-2">Examen Finalizado</h2>
+            <p class="text-gray-400 mb-8">Sistemas Distribuidos: Java RMI Avanzado</p>
+            
+            <div id="score-circle" class="w-40 h-40 rounded-full border-[12px] flex flex-col items-center justify-center mb-6 bg-[#1e1e1e]">
+                <span id="final-score-text" class="text-5xl font-black"></span>
+                <span class="text-gray-500 mt-1">sobre 15</span>
+            </div>
+            
+            <p id="final-message" class="text-lg font-medium mb-8"></p>
+            
+            <button onclick="location.reload()" class="bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white px-8 py-3 rounded font-semibold transition-colors">
+                Reiniciar Examen
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        // Inicializar resaltado de código
+        hljs.highlightAll();
+
+        // Datos del Cuestionario
+        const quizData = [
+            {
+                q: "En el Listing 1 (Hueco 1), ¿Qué herencia debe declararse para que la interfaz LogVista sea válida en RMI?",
+                options: {
+                    A: "implements RemoteException",
+                    B: "extends UnicastRemoteObject",
+                    C: "extends java.rmi.Remote",
+                    D: "implements java.io.Serializable"
+                },
+                correct: "C",
+                explanation: "Toda interfaz que declare métodos que se van a invocar de forma remota, ya sea un servicio del servidor o un Callback en el cliente, debe heredar (extends) de la interfaz marcadora java.rmi.Remote."
+            },
+            {
+                q: "En el Listing 1 (Hueco 2), el método de notificación remota notify obliga a declarar la excepción:",
+                options: {
+                    A: "RemoteException",
+                    B: "ServerNotActiveException",
+                    C: "IOException",
+                    D: "NotBoundException"
+                },
+                correct: "A",
+                explanation: "RMI exige que todo método expuesto en una interfaz remota declare throws RemoteException debido a la posibilidad de que la red falle durante la invocación."
+            },
+            {
+                q: "En el Listing 2 (Hueco 3), la clase FileLectorImpl proporciona el código real del objeto. Para que la plataforma RMI pueda exportarlo, debe heredar de:",
+                options: {
+                    A: "RemoteServer",
+                    B: "Thread",
+                    C: "UnicastRemoteObject",
+                    D: "SslRMIClientSocketFactory"
+                },
+                correct: "C",
+                explanation: "Al implementar una interfaz remota, la clase debe extender de UnicastRemoteObject para que su instanciación active automáticamente los mecanismos de exportación RMI en la máquina virtual."
+            },
+            {
+                q: "En la línea 18 del Listing 2 (Hueco 4), ¿cuál es la llamada correcta al constructor padre para asegurar que este objeto utilice las factorías SSL inyectadas?",
+                options: {
+                    A: "super();",
+                    B: "this(csf, ssf);",
+                    C: "super(1099);",
+                    D: "super(0, csf, ssf);"
+                },
+                correct: "D",
+                explanation: "Cuando implementamos SSL no podemos usar el constructor vacío normal. Debemos llamar a super(puerto, clientFactory, serverFactory). El puerto 0 indica a Java que elija un puerto dinámico anónimo."
+            },
+            {
+                q: "En el Listing 2 (Hueco 5), estamos aplicando el Patrón Factory. El método abre debe instanciar un nuevo recurso remoto para el cliente. ¿Qué clase concreta va en el hueco?",
+                options: {
+                    A: "FileLector (Interfaz)",
+                    B: "FileLectorImpl",
+                    C: "FileGestorImpl",
+                    D: "LogVistaImpl"
+                },
+                correct: "B",
+                explanation: "En el patrón Factory, el servidor crea una instancia de la clase de implementación concreta (FileLectorImpl), aunque el método declare devolver la interfaz (FileLector). A través de la red, al cliente sólo le viaja el stub (referencia remota)."
+            },
+            {
+                q: "En la línea 41 del Listing 2 (Hueco 6), deseamos imprimir en pantalla la IP de quien hace la petición. Al heredar de la familia RemoteServer, usamos el método:",
+                options: {
+                    A: "getRemoteAddress",
+                    B: "getInetAddress",
+                    C: "getClientHost",
+                    D: "getCallerIP"
+                },
+                correct: "C",
+                explanation: "El método getClientHost() proviene de la clase java.rmi.server.RemoteServer (padre de UnicastRemoteObject) y devuelve un string con el nombre del host o IP del cliente que está realizando la invocación remota actual."
+            },
+            {
+                q: "En el Listing 3 (Hueco 7), para instanciar el Registro RMI internamente dentro de nuestra aplicación servidor aplicando las factorías de cifrado SSL, el método correcto es:",
+                options: {
+                    A: "getRegistry",
+                    B: "findRegistry",
+                    C: "bindRegistry",
+                    D: "createRegistry"
+                },
+                correct: "D",
+                explanation: "El método LocateRegistry.createRegistry(1099, csf, ssf) arranca un nuevo registro RMI programáticamente configurando las factorías seguras para escuchar en ese puerto."
+            },
+            {
+                q: "En el Listing 3 (Hueco 8), para registrar/enlazar de forma segura un objeto RMI con un identificador (String), sobreescribiendo si ya hubiese otro registro con el mismo nombre, invocamos:",
+                options: {
+                    A: "rebind",
+                    B: "bind",
+                    C: "lookup",
+                    D: "exportObject"
+                },
+                correct: "A",
+                explanation: "rebind(\"Nombre\", objeto) actualiza la tabla del RMI Registry machacando cualquier entrada anterior. bind fallaría lanzando una excepción si el nombre ya estuviera ocupado."
+            },
+            {
+                q: "En el Listing 3 (Hueco 9), queremos configurar el sistema de Logs de RMI integrado en Java. La propiedad \"java.rmi.server.logCalls\" debe establecerse a:",
+                options: {
+                    A: "\"DEBUG\"",
+                    B: "\"ALL\"",
+                    C: "\"true\"",
+                    D: "\"FINEST\""
+                },
+                correct: "C",
+                explanation: "Como se detalla en las notas del laboratorio de Patrones Habituales (Loggeando peticiones), para volcar las trazas detalladas de RMI en pantalla se ejecuta System.setProperty(\"java.rmi.server.logCalls\", \"true\");."
+            },
+            {
+                q: "En el Listing 4 (Hueco 10), el Cliente necesita actuar como servidor para recibir el Callback SSL. Como queremos \"sobrevivir sin autenticación de cliente\", los parámetros del constructor SslRMIServerSocketFactory son:",
+                options: {
+                    A: "(csf, ssf)",
+                    B: "(true, false)",
+                    C: "(null, null, false)",
+                    D: "(0, csf, ssf)"
+                },
+                correct: "C",
+                explanation: "Esta sintaxis (null, null, false) utiliza las listas de cifrado por defecto (los dos null) e indica explícitamente con false al motor JSSE que no requiera autenticación mutua (Client Authentication)."
+            },
+            {
+                q: "En la línea 24 del Listing 4 (Hueco 11), al utilizar lookup en el cliente, RMI nos devuelve un stub genérico. ¿Con qué tipo exacto debemos tipar la variable gestor?",
+                options: {
+                    A: "Object",
+                    B: "FileGestorAdmin (Interfaz)",
+                    C: "FileGestorAdminImpl (Clase concreta)",
+                    D: "Remote"
+                },
+                correct: "B",
+                explanation: "Una regla sagrada en RMI es que el cliente solo debe conocer las interfaces, jamás las implementaciones. El objeto recuperado debe guardarse casteado a su interfaz correspondiente (FileGestorAdmin)."
+            },
+            {
+                q: "Analizando la arquitectura entre FileGestorImpl y FileGestorAdminImpl en el Listing 2. ¿Cómo se denomina el patrón donde un objeto de menor rango tiene una referencia interna y transfiere la ejecución a otro objeto de mayor rango?",
+                options: {
+                    A: "MVC (Modelo Vista Controlador)",
+                    B: "Factory (Fábrica)",
+                    C: "Patrón de Delegación (Dos interfaces sobre un mismo objeto gestionado)",
+                    D: "Objeto Activo"
+                },
+                correct: "C",
+                explanation: "El patrón \"Dos interfaces sobre un mismo Objeto Remoto con Delegación\" se usa para tener dos vistas o perfiles de permisos. El objeto FileGestorImpl carece de lógica propia y redirige/delega las llamadas comunes a FileGestorAdminImpl."
+            },
+            {
+                q: "Cuando el servidor invoca observador.notify(...) (Línea 24 del Listing 2) interactuando con una referencia alojada en el lado del cliente, ¿qué patrón clásico estamos evidenciando en RMI?",
+                options: {
+                    A: "Singleton",
+                    B: "Observer / Callbacks",
+                    C: "Abstract Factory",
+                    D: "RMI Registry Routing"
+                },
+                correct: "B",
+                explanation: "Estamos ante un Callback (llamada de vuelta). El servidor proactivo notifica asíncronamente a los clientes suscritos (Observadores / Vistas en la terminología MVC de Sistemas Distribuidos)."
+            },
+            {
+                q: "Si decidieras no crear el RMI Registry por código (createRegistry), y prefieres lanzarlo desde la terminal del sistema operativo, ¿qué comando deberías usar para asegurarte de que el registro encuentre las interfaces (.class) compiladas?",
+                options: {
+                    A: "rmiregistry -J-Djava.class.path=\"<path_binarios>\"",
+                    B: "java -cp <path> rmiregistry",
+                    C: "rmiregistry -classpath <path>",
+                    D: "javac -d . rmiregistry"
+                },
+                correct: "A",
+                explanation: "La herramienta externa rmiregistry necesita un flag interno para inyectar argumentos a la Máquina Virtual de Java que lo ejecuta. Se usa -J seguido de -Djava.class.path=\"ruta\"."
+            },
+            {
+                q: "Según la teoría de Seguridad de Sockets en Java (SSL/TLS), ¿cuál es el comando principal de la herramienta keytool que genera simultáneamente el par de claves (pública/privada) y el almacén (Keystore)?",
+                options: {
+                    A: "keytool -export",
+                    B: "keytool -import",
+                    C: "keytool -genkey",
+                    D: "keytool -list"
+                },
+                correct: "C",
+                explanation: "El flag -genkey genera la clave privada y un certificado X.509 autofirmado asociándolos al Keystore. -export se usaría luego para extraer la clave pública, y -import para meterla en el Truststore del otro lado."
+            }
+        ];
+
+        // Estado del Examen
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isAnswered = false;
+
+        // Elementos del DOM
+        const qText = document.getElementById('question-text');
+        const optsGrid = document.getElementById('options-grid');
+        const tracker = document.getElementById('question-tracker');
+        const liveScore = document.getElementById('live-score');
+        const progressBar = document.getElementById('progress-bar');
+        const expBox = document.getElementById('explanation-box');
+        const expText = document.getElementById('explanation-text');
+        const btnNext = document.getElementById('btn-next');
+        
+        const quizArea = document.getElementById('quiz-container');
+        const resultsArea = document.getElementById('results-container');
+        const finalScoreText = document.getElementById('final-score-text');
+        const finalMessage = document.getElementById('final-message');
+        const scoreCircle = document.getElementById('score-circle');
+
+        function loadQuestion() {
+            isAnswered = false;
+            const q = quizData[currentQuestionIndex];
+            
+            // UI Reset
+            expBox.classList.remove('animate-fade-in');
+            expBox.classList.add('hidden');
+            btnNext.classList.add('hidden');
+            optsGrid.innerHTML = '';
+            
+            // Actualizar textos
+            tracker.innerText = `Pregunta ${currentQuestionIndex + 1} de ${quizData.length}`;
+            progressBar.style.width = `${((currentQuestionIndex) / quizData.length) * 100}%`;
+            qText.innerHTML = `<span class="text-blue-500 font-bold mr-2">${currentQuestionIndex + 1}.</span> ${q.q}`;
+            
+            // Generar Opciones
+            Object.keys(q.options).forEach(key => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left bg-[#252526] hover:bg-[#2d2d2d] border border-ide-border rounded p-4 flex items-start gap-4 text-gray-300";
+                btn.innerHTML = `<span class="bg-[#1e1e1e] text-gray-400 font-bold py-1 px-3 rounded text-sm">${key}</span> <span class="pt-0.5 leading-snug">${q.options[key]}</span>`;
+                
+                btn.onclick = () => selectOption(btn, key, q);
+                optsGrid.appendChild(btn);
+            });
+        }
+
+        function selectOption(selectedBtn, selectedKey, questionData) {
+            if (isAnswered) return;
+            isAnswered = true;
+            
+            const isCorrect = selectedKey === questionData.correct;
+            const allBtns = optsGrid.children;
+            
+            // Colorear opciones e inhabilitar
+            Array.from(allBtns).forEach((btn, index) => {
+                const optKey = Object.keys(questionData.options)[index];
+                btn.disabled = true;
+                
+                if (optKey === questionData.correct) {
+                    btn.classList.replace('bg-[#252526]', 'bg-green-900/30');
+                    btn.classList.replace('border-ide-border', 'border-green-600');
+                    btn.classList.replace('text-gray-300', 'text-green-100');
+                } else if (optKey === selectedKey && !isCorrect) {
+                    btn.classList.replace('bg-[#252526]', 'bg-red-900/30');
+                    btn.classList.replace('border-ide-border', 'border-red-600');
+                    btn.classList.replace('text-gray-300', 'text-red-100');
+                } else {
+                    btn.classList.add('opacity-40');
+                }
+            });
+
+            if (isCorrect) {
+                score++;
+                liveScore.innerText = `Aciertos: ${score}`;
+                expBox.classList.replace('border-blue-500', 'border-green-500');
+                expBox.querySelector('svg').classList.replace('text-blue-400', 'text-green-400');
+            } else {
+                expBox.classList.replace('border-green-500', 'border-red-500');
+                expBox.classList.replace('border-blue-500', 'border-red-500');
+                expBox.querySelector('svg').classList.replace('text-green-400', 'text-red-400');
+                expBox.querySelector('svg').classList.replace('text-blue-400', 'text-red-400');
+            }
+
+            // Mostrar Explicación con animación Fade-in
+            expText.innerHTML = `<strong>Respuesta Correcta (${questionData.correct}):</strong> <br> ${questionData.explanation}`;
+            expBox.classList.remove('hidden');
+            // Trigger reflow for animation
+            void expBox.offsetWidth;
+            expBox.classList.add('animate-fade-in');
+
+            // Mostrar botón siguiente
+            btnNext.innerText = (currentQuestionIndex === quizData.length - 1) ? "Finalizar Examen" : "Siguiente Pregunta";
+            btnNext.classList.remove('hidden');
+        }
+
+        btnNext.addEventListener('click', () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                finishQuiz();
+            }
+        });
+
+        function finishQuiz() {
+            localStorage.setItem('exam2_score', score);
+            quizArea.classList.add('hidden');
+            resultsArea.classList.remove('hidden');
+            
+            finalScoreText.innerText = score;
+            
+            // Lógica de aprobado (Mínimo 10/15)
+            if (score >= 10) {
+                scoreCircle.classList.add('border-green-500');
+                finalScoreText.classList.add('text-green-400');
+                finalMessage.innerText = "¡Enhorabuena! Has aprobado el test de nivel experto.";
+                finalMessage.classList.add('text-green-400');
+            } else {
+                scoreCircle.classList.add('border-red-500');
+                finalScoreText.classList.add('text-red-400');
+                finalMessage.innerText = "No has superado el mínimo (10/15). ¡Sigue repasando los patrones RMI!";
+                finalMessage.classList.add('text-red-400');
+            }
+        }
+
+        // Iniciar la primera vez
+        loadQuestion();
+    </script>
+</body>
+</html>

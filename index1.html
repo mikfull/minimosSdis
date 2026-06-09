@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examen Avanzado: Sistemas Distribuidos y RMI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/java.min.js"></script>
+    <style>
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
+        .dark-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+        
+        .option-btn { transition: all 0.2s ease-in-out; }
+        .selected { border-color: #3b82f6; background-color: #eff6ff; }
+        .correct { border-color: #22c55e; background-color: #f0fdf4; color: #166534; }
+        .incorrect { border-color: #ef4444; background-color: #fef2f2; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-blue-900 text-white shadow-md p-4 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Simulador de Examen: RMI & SSL</h1>
+            <span class="bg-blue-800 px-3 py-1 rounded-full text-sm font-semibold tracking-wide">Nivel Avanzado</span>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        
+        <section class="bg-slate-900 rounded-xl shadow-lg overflow-hidden flex flex-col max-h-[85vh] sticky top-20">
+            <div class="bg-slate-800 p-3 border-b border-slate-700">
+                <h2 class="text-slate-200 font-semibold flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    Fragmentos de Código (Gestor Documental)
+                </h2>
+            </div>
+            <div class="p-4 overflow-y-auto dark-scrollbar text-sm">
+                
+<div class="mb-6">
+<h3 class="text-blue-400 font-mono mb-2 text-xs uppercase tracking-wider">Listing 1: Interfaces del Sistema</h3>
+<pre><code class="language-java rounded-lg">1  package rmi.advanced.interfaces;
+2  import java.rmi.Remote;
+3  import java.rmi.RemoteException;
+4
+5  // Interfaz del Callback (Vista en el Cliente)
+6  public interface AlertaVista extends Remote {
+7      void notificarAlerta(String mensaje) throws ~~~~~(1)~~~~~;
+8  }
+9
+10 // Interfaz del recurso creado dinámicamente (Lector)
+11 public interface DocumentoSeguro extends Remote {
+12     String leerFila() throws RemoteException;
+13 }
+14
+15 // Interfaz de la Factoría / Controlador principal
+16 public interface GestorDocumental extends Remote {
+17     DocumentoSeguro abrirDocumento(String id) throws RemoteException;
+18     void suscribirAlertas(AlertaVista vista) throws RemoteException;
+19 }</code></pre>
+</div>
+
+<div class="mb-6">
+<h3 class="text-blue-400 font-mono mb-2 text-xs uppercase tracking-wider">Listing 2: Implementación de la Factoría y Servidor</h3>
+<pre><code class="language-java rounded-lg">1  package rmi.advanced.server;
+2  import rmi.advanced.interfaces.*;
+3  import java.rmi.server.UnicastRemoteObject;
+4  import java.rmi.RemoteException;
+5  import javax.rmi.ssl.SslRMIClientSocketFactory;
+6  import javax.rmi.ssl.SslRMIServerSocketFactory;
+7  import java.rmi.registry.LocateRegistry;
+8  import java.rmi.registry.Registry;
+9
+10 public class GestorDocumentalImpl extends ~~~~~(2)~~~~~ implements GestorDocumental {
+11     private SslRMIClientSocketFactory csf;
+12     private SslRMIServerSocketFactory ssf;
+13     
+14     public GestorDocumentalImpl(SslRMIClientSocketFactory csf, SslRMIServerSocketFactory ssf) throws RemoteException {
+15         ~~~~~(3)~~~~~; 
+16         this.csf = csf;
+17         this.ssf = ssf;
+18     }
+19     
+20     // Patrón Factory
+21     public DocumentoSeguro abrirDocumento(String id) throws RemoteException {
+22         System.out.println("Creando documento remoto para: " + id);
+23         return new ~~~~~(4)~~~~~(id, csf, ssf); 
+24     }
+25     
+26     // Patrón Observer
+27     public void suscribirAlertas(AlertaVista vista) throws RemoteException {
+28         vista.notificarAlerta("Suscripción exitosa al gestor documental.");
+29     }
+30
+31     public static void main(String[] args) {
+32         try {
+33             System.setProperty("javax.net.ssl.keyStore", "Server_Keystore.jks");
+34             System.setProperty("javax.net.ssl.keyStorePassword", "servidorpass");
+35             
+36             SslRMIClientSocketFactory rmicsf = new SslRMIClientSocketFactory();
+37             SslRMIServerSocketFactory rmissf = new SslRMIServerSocketFactory();
+38             
+39             Registry reg = LocateRegistry.~~~~~(5)~~~~~(1099, rmicsf, rmissf);
+40             GestorDocumentalImpl gestor = new GestorDocumentalImpl(rmicsf, rmissf);
+41             
+42             reg.~~~~~(6)~~~~~("GestorSeguro", gestor);
+43             System.out.println("Servidor RMI Avanzado en línea...");
+44         } catch (Exception e) { e.printStackTrace(); }
+45     }
+46 }</code></pre>
+</div>
+
+<div>
+<h3 class="text-blue-400 font-mono mb-2 text-xs uppercase tracking-wider">Listing 3: Implementación del Callback y Lanzador del Cliente</h3>
+<pre><code class="language-java rounded-lg">1  package rmi.advanced.client;
+2  import rmi.advanced.interfaces.*;
+3  import java.rmi.server.UnicastRemoteObject;
+4  import java.rmi.registry.LocateRegistry;
+5  import java.rmi.registry.Registry;
+6  import javax.rmi.ssl.SslRMIClientSocketFactory;
+7  import javax.rmi.ssl.SslRMIServerSocketFactory;
+8
+9  public class ClienteObservador extends UnicastRemoteObject implements AlertaVista {
+10     
+11     public ClienteObservador(SslRMIClientSocketFactory csf, SslRMIServerSocketFactory ssf) throws Exception {
+12         super(0, csf, ssf);
+13     }
+14     
+15     public void notificarAlerta(String mensaje) {
+16         System.out.println("ALERTA DEL SERVIDOR: " + mensaje);
+17     }
+18     
+19     public static void main(String[] args) {
+20         try {
+21             System.setProperty("javax.net.ssl.trustStore", "Client_Truststore.jks");
+22             System.setProperty("javax.net.ssl.trustStorePassword", "clientepass");
+23             
+24             // TRUCO: El cliente necesita cargar un Keystore para recibir callbacks SSL
+25             System.setProperty("javax.net.ssl.keyStore", "Server_Keystore.jks");
+26             System.setProperty("javax.net.ssl.keyStorePassword", "servidorpass");
+27
+28             SslRMIClientSocketFactory csf = new SslRMIClientSocketFactory();
+29             SslRMIServerSocketFactory ssf = new SslRMIServerSocketFactory(~~~~~(7)~~~~~);
+30             
+31             Registry reg = LocateRegistry.~~~~~(8)~~~~~("localhost", 1099, csf);
+32             
+33             ~~~~~(9)~~~~~ gestor = (GestorDocumental) reg.lookup("GestorSeguro");
+34             
+35             ClienteObservador miVista = new ClienteObservador(csf, ssf);
+36             gestor.suscribirAlertas(miVista);
+37             
+38             ~~~~~(10)~~~~~ miDoc = gestor.abrirDocumento("Confidencial.txt");
+39             System.out.println(miDoc.leerFila());
+40             
+41         } catch (Exception e) { e.printStackTrace(); }
+42     }
+43 }</code></pre>
+</div>
+
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-lg p-6 flex flex-col min-h-[500px]" id="quiz-container">
+            <div class="mb-6">
+                <div class="flex justify-between text-sm font-semibold text-slate-500 mb-2">
+                    <span id="question-counter">Pregunta 1 de 15</span>
+                    <span id="score-display">Puntuación: 0</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 6.66%"></div>
+                </div>
+            </div>
+
+            <div id="question-area" class="flex-grow">
+                <h3 id="question-text" class="text-lg font-semibold text-slate-800 mb-6 leading-relaxed"></h3>
+                
+                <div id="options-container" class="space-y-3">
+                    </div>
+
+                <div id="feedback-area" class="mt-6 hidden p-4 rounded-lg border">
+                    <p id="feedback-title" class="font-bold mb-1"></p>
+                    <p id="feedback-explanation" class="text-sm text-slate-700"></p>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-slate-100 flex justify-end">
+                <button id="btn-check" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Comprobar respuesta
+                </button>
+                <button id="btn-next" class="hidden bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-6 rounded-lg shadow-sm transition-colors">
+                    Siguiente Pregunta
+                </button>
+            </div>
+        </section>
+
+        <section id="results-container" class="hidden bg-white rounded-xl shadow-lg p-10 flex flex-col items-center justify-center min-h-[500px] text-center">
+            <h2 class="text-3xl font-bold text-slate-800 mb-4">¡Examen Completado!</h2>
+            
+            <div id="score-circle" class="w-32 h-32 rounded-full border-8 border-blue-100 flex flex-col items-center justify-center mb-6">
+                <span id="final-score" class="text-4xl font-black text-blue-600"></span>
+                <span class="text-sm font-bold text-slate-400 mt-1">/ 15</span>
+            </div>
+            
+            <p class="text-lg text-slate-600 mb-2">Has acertado <span id="correct-count" class="font-bold text-slate-800"></span> preguntas.</p>
+            <p id="final-message" class="text-sm font-medium mt-2 max-w-md"></p>
+            
+            <button onclick="location.reload()" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg shadow-sm transition-colors">
+                Volver a intentar
+            </button>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Syntax Highlighting
+        hljs.highlightAll();
+
+        // Quiz Data
+        const quizData = [
+            {
+                q: "En la línea 7 del Listing 1 (Hueco 1), la interfaz de Callback que está en el cliente obliga a que el método remoto notificarAlerta declare la excepción:",
+                options: {
+                    a: "ServerException",
+                    b: "RemoteException",
+                    c: "NotBoundException",
+                    d: "SSLHandshakeException"
+                },
+                correct: "b",
+                explanation: "En RMI, todas las interfaces remotas, ya sean de objetos del servidor o de Callbacks del cliente, deben declarar throws java.rmi.RemoteException en sus métodos debido a la posibilidad de fallos de red."
+            },
+            {
+                q: "En la línea 10 del Listing 2 (Hueco 2), para que la factoría funcione como un objeto remoto accesible por la red, la clase GestorDocumentalImpl debe tener la herencia:",
+                options: {
+                    a: "extends java.rmi.Remote",
+                    b: "extends java.io.Serializable",
+                    c: "extends UnicastRemoteObject",
+                    d: "extends SslRMIServerSocketFactory"
+                },
+                correct: "c",
+                explanation: "Para que una clase provea la implementación de un servicio remoto y pueda ser invocada a través de la red, debe heredar obligatoriamente de java.rmi.server.UnicastRemoteObject."
+            },
+            {
+                q: "En la línea 15 del Listing 2 (Hueco 3), al implementar el constructor seguro del gestor documental, la llamada obligatoria para exportar el objeto utilizando las factorías SSL es:",
+                options: {
+                    a: "super();",
+                    b: "super(1099, csf, ssf);",
+                    c: "this(0, csf, ssf);",
+                    d: "super(0, csf, ssf);"
+                },
+                correct: "d",
+                explanation: "Cuando implementamos SSL, no podemos usar el constructor por defecto super(). Debemos invocar explícitamente el constructor de la clase padre enviando el puerto (usualmente 0 para uno anónimo) y las factorías: super(0, csf, ssf)."
+            },
+            {
+                q: "Al aplicar el patrón Factory en RMI (Línea 23, Hueco 4), el método abrirDocumento crea dinámicamente un objeto en el servidor. ¿Qué clase concreta debe estar instanciándose ahí?",
+                options: {
+                    a: "DocumentoSeguro (la interfaz)",
+                    b: "DocumentoSeguroImpl (la clase de implementación)",
+                    c: "FileLector",
+                    d: "ClienteObservador"
+                },
+                correct: "b",
+                explanation: "El patrón Factory crea nuevos objetos en el servidor. El código debe instanciar la clase de implementación real (DocumentoSeguroImpl), aunque luego el método devuelva la referencia casteada a su interfaz."
+            },
+            {
+                q: "Para crear el registro RMI por programa utilizando Sockets SSL dentro de la misma máquina virtual (Línea 39, Hueco 5), el método exacto es:",
+                options: {
+                    a: "createRegistry",
+                    b: "getRegistry",
+                    c: "new Registry",
+                    d: "bindRegistry"
+                },
+                correct: "a",
+                explanation: "Cuando deseamos levantar el registro internamente desde nuestro programa en vez de usar la terminal externa, usamos LocateRegistry.createRegistry(...)."
+            },
+            {
+                q: "Para enlazar el Gestor Documental de forma segura sobreescribiendo cualquier referencia previa en el registro (Línea 42, Hueco 6), debemos invocar:",
+                options: {
+                    a: "lookup",
+                    b: "bind",
+                    c: "rebind",
+                    d: "exportObject"
+                },
+                correct: "c",
+                explanation: "El método rebind(String, Remote) asocia de forma segura el objeto remoto con el identificador en el registro, reemplazando cualquier otro objeto que estuviera publicado con ese mismo nombre."
+            },
+            {
+                q: "En el patrón de Callback sobre SSL sin autenticación de cliente (Línea 29, Hueco 7), configuramos la factoría de socket del cliente. ¿Qué parámetros se envían al constructor SslRMIServerSocketFactory para indicar explícitamente que no requerimos autenticación del cliente?",
+                options: {
+                    a: "(csf, ssf)",
+                    b: "(null, null, false)",
+                    c: "(\"localhost\", 1099, false)",
+                    d: "(true, false)"
+                },
+                correct: "b",
+                explanation: "Según la teoría de \"Sobreviviendo sin autenticación de cliente\", se usa new SslRMIServerSocketFactory(null, null, false) indicando expresamente con el false final que no requerimos verificar certificados al conectarse."
+            },
+            {
+                q: "Para recuperar la referencia del registro seguro en el cliente (Línea 31, Hueco 8) utilizando la factoría SSL de cliente, usamos:",
+                options: {
+                    a: "createRegistry",
+                    b: "Naming.lookup",
+                    c: "getRegistry",
+                    d: "LocateRegistry.findRegistry"
+                },
+                correct: "c",
+                explanation: "En el lado del cliente se utiliza LocateRegistry.getRegistry(...) para obtener una referencia a un RMI registry remoto que ya ha sido creado por el servidor."
+            },
+            {
+                q: "En la línea 33 (Hueco 9), al recibir el objeto del método lookup, la variable gestor debe ser declarada del tipo:",
+                options: {
+                    a: "GestorDocumentalImpl (Clase concreta)",
+                    b: "UnicastRemoteObject",
+                    c: "Object",
+                    d: "GestorDocumental (Interfaz)"
+                },
+                correct: "d",
+                explanation: "El pilar de la invocación remota es que los clientes solo conocen las interfaces. Por red viajan referencias, no implementaciones. Se debe castear y guardar usando la Interfaz (GestorDocumental)."
+            },
+            {
+                q: "En el patrón Factory, cuando el gestor devuelve el nuevo objeto generado (Línea 38, Hueco 10), el tipo de la variable miDoc debe ser:",
+                options: {
+                    a: "DocumentoSeguroImpl",
+                    b: "DocumentoSeguro",
+                    c: "File",
+                    d: "String"
+                },
+                correct: "b",
+                explanation: "Al igual que en el hueco 9, el resultado de una factoría remota siempre se recoge utilizando la Interfaz Remota del objeto (DocumentoSeguro)."
+            },
+            {
+                q: "En la arquitectura del cliente (Listing 3, líneas 24-26), se inyectan propiedades keyStore privadas. ¿Cuál es el motivo fundamental según las prácticas?",
+                options: {
+                    a: "El Registry exige siempre que el cliente se identifique para hacer lookup.",
+                    b: "Al instanciar un objeto de Callback remoto, el cliente actúa temporalmente como \"servidor\" y Java exige un almacén de claves privado para arrancar su SSLServerSocket, aunque no autentique la conexión entrante.",
+                    c: "El KeyStore y el TrustStore son exactamente el mismo archivo, es indiferente.",
+                    d: "Es un error de código, el cliente jamás debe cargar un keyStore."
+                },
+                correct: "b",
+                explanation: "Es una trampa técnica habitual. Para levantar un socket servidor SSL (necesario para recibir la llamada del Callback desde el servidor real), la JVM exige leer un KeyStore privado, incluso si le indicamos (false) que no valide la conexión."
+            },
+            {
+                q: "En la consola, si deseas arrancar el RMI Registry por separado inyectando la ruta a tus clases binarias .class, el comando exacto es:",
+                options: {
+                    a: "rmiregistry -J-Djava.class.path=\"<path>\"",
+                    b: "java -cp <path> rmiregistry",
+                    c: "javac -d . rmiregistry.java",
+                    d: "rmiregistry --classpath=<path>"
+                },
+                correct: "a",
+                explanation: "El comando correcto para lanzar el registro independiente y pasarle la propiedad de máquina virtual indicando el path de binarios es rmiregistry -J-Djava.class.path=\"<ruta>\"."
+            },
+            {
+                q: "Quieres depurar llamadas RMI y ver IPs. ¿Qué propiedad debes establecer a \"true\" en el servidor?",
+                options: {
+                    a: "java.rmi.server.logLevel",
+                    b: "javax.net.debug",
+                    c: "java.rmi.server.logCalls",
+                    d: "java.rmi.debug.remote"
+                },
+                correct: "c",
+                explanation: "Para habilitar las trazas detalladas de llamadas RMI en el log, debes fijar la propiedad de sistema System.setProperty(\"java.rmi.server.logCalls\", \"true\")."
+            },
+            {
+                q: "A la hora de usar keytool, ¿cuál es el comando principal para crear el Almacén de Claves Privadas de servidor (Server Keystore) y generar su certificado auto-firmado?",
+                options: {
+                    a: "keytool -export",
+                    b: "keytool -genkey",
+                    c: "keytool -import",
+                    d: "keytool -list"
+                },
+                correct: "b",
+                explanation: "La operación principal para generar (generate) la clave y el almacén simultáneamente es keytool -genkey."
+            },
+            {
+                q: "En el patrón \"Dos interfaces sobre un mismo Objeto Remoto\" (Delegación), ¿cómo se estructura habitualmente?",
+                options: {
+                    a: "Se crea un RMI Registry distinto en diferentes puertos, uno por cada interfaz.",
+                    b: "Un único objeto implementa una interfaz, y el cliente usa polimorfismo local para heredarla.",
+                    c: "Se diseñan dos interfaces, un objeto implementa la de mayor rango, y otro (el de menor rango) implementa la segunda, pero delega todas sus llamadas a la instancia del primer objeto.",
+                    d: "Se usan Factorías RMI para que devuelvan Strings codificados en Base64."
+                },
+                correct: "c",
+                explanation: "Este patrón (Delegation/Proxy) consiste en tener un objeto maestro que implementa la interfaz superior, y otro esclavo que implementa la interfaz inferior delegando o subrogando sus métodos internos hacia el objeto maestro que recibió en su constructor."
+            }
+        ];
+
+        // State Variables
+        let currentQuestion = 0;
+        let score = 0;
+        let selectedOption = null;
+        let hasAnswered = false;
+
+        // DOM Elements
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const btnCheck = document.getElementById('btn-check');
+        const btnNext = document.getElementById('btn-next');
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackExplanation = document.getElementById('feedback-explanation');
+        const questionCounter = document.getElementById('question-counter');
+        const scoreDisplay = document.getElementById('score-display');
+        const progressBar = document.getElementById('progress-bar');
+        
+        const quizContainer = document.getElementById('quiz-container');
+        const resultsContainer = document.getElementById('results-container');
+        const finalScoreText = document.getElementById('final-score');
+        const correctCountText = document.getElementById('correct-count');
+        const scoreCircle = document.getElementById('score-circle');
+        const finalMessage = document.getElementById('final-message');
+
+        // Initialize First Question
+        loadQuestion();
+
+        function loadQuestion() {
+            hasAnswered = false;
+            selectedOption = null;
+            const q = quizData[currentQuestion];
+            
+            // Update UI
+            questionCounter.innerText = `Pregunta ${currentQuestion + 1} de ${quizData.length}`;
+            progressBar.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
+            questionText.innerText = `${currentQuestion + 1}. ${q.q}`;
+            
+            // Clear previous
+            optionsContainer.innerHTML = '';
+            feedbackArea.classList.add('hidden');
+            btnCheck.classList.remove('hidden');
+            btnNext.classList.add('hidden');
+            btnCheck.disabled = true;
+
+            // Render Options
+            Object.entries(q.options).forEach(([key, value]) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-4 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 font-medium text-slate-700 flex items-start gap-3";
+                btn.innerHTML = `<span class="uppercase font-bold text-slate-400 w-6">${key})</span> <span>${value}</span>`;
+                
+                btn.onclick = () => selectOption(btn, key);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(btnElement, key) {
+            if (hasAnswered) return; // Prevent changing after check
+            
+            // Remove selection from all
+            document.querySelectorAll('.option-btn').forEach(b => {
+                b.classList.remove('selected', 'border-blue-500', 'bg-blue-50');
+            });
+            
+            // Add selection to current
+            btnElement.classList.add('selected', 'border-blue-500', 'bg-blue-50');
+            selectedOption = key;
+            btnCheck.disabled = false;
+        }
+
+        btnCheck.addEventListener('click', () => {
+            if (!selectedOption || hasAnswered) return;
+            hasAnswered = true;
+            
+            const q = quizData[currentQuestion];
+            const isCorrect = selectedOption === q.correct;
+            
+            // Visual feedback on options
+            const options = optionsContainer.children;
+            Object.keys(q.options).forEach((key, index) => {
+                const btn = options[index];
+                
+                if (key === q.correct) {
+                    btn.classList.add('correct', 'border-green-500', 'bg-green-50');
+                    btn.classList.remove('selected');
+                } else if (key === selectedOption && !isCorrect) {
+                    btn.classList.add('incorrect', 'border-red-500', 'bg-red-50');
+                    btn.classList.remove('selected');
+                }
+                btn.style.pointerEvents = 'none'; // disable clicks
+            });
+
+            // Update Score & Feedback Area
+            if (isCorrect) {
+                score++;
+                scoreDisplay.innerText = `Aciertos: ${score}`;
+                feedbackArea.className = "mt-6 p-4 rounded-lg border border-green-200 bg-green-50 block animate-[fadeIn_0.3s_ease-in]";
+                feedbackTitle.innerText = "¡Correcto!";
+                feedbackTitle.className = "font-bold mb-1 text-green-700";
+            } else {
+                feedbackArea.className = "mt-6 p-4 rounded-lg border border-red-200 bg-red-50 block animate-[fadeIn_0.3s_ease-in]";
+                feedbackTitle.innerText = "Incorrecto";
+                feedbackTitle.className = "font-bold mb-1 text-red-700";
+            }
+            
+            feedbackExplanation.innerText = q.explanation;
+            feedbackExplanation.className = "text-sm " + (isCorrect ? "text-green-800" : "text-red-800");
+
+            // Toggle Buttons
+            btnCheck.classList.add('hidden');
+            btnNext.classList.remove('hidden');
+        });
+
+        btnNext.addEventListener('click', () => {
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        });
+
+        function showResults() {
+            localStorage.setItem('exam1_score', score);
+            quizContainer.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+            
+            correctCountText.innerText = score;
+            finalScoreText.innerText = score;
+            
+            // Colorizing final score based on pass/fail (Minimum 10 to pass)
+            if (score >= 10) {
+                finalScoreText.className = "text-5xl font-black text-green-600";
+                scoreCircle.className = "w-32 h-32 rounded-full border-8 border-green-100 flex flex-col items-center justify-center mb-6";
+                finalMessage.innerText = "¡Enhorabuena! Has superado el test (Se requerían al menos 10 aciertos).";
+                finalMessage.className = "text-sm font-semibold text-green-600 mt-2 max-w-md";
+            } else {
+                finalScoreText.className = "text-5xl font-black text-red-600";
+                scoreCircle.className = "w-32 h-32 rounded-full border-8 border-red-100 flex flex-col items-center justify-center mb-6";
+                finalMessage.innerText = "No has superado el test. Se requiere un mínimo de 10 aciertos para aprobar.";
+                finalMessage.className = "text-sm font-semibold text-red-600 mt-2 max-w-md";
+            }
+        }
+    </script>
+</body>
+</html>
